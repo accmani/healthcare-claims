@@ -170,25 +170,20 @@ public class ClaimAdjudicationService {
      * Validates claim lines by removing any lines with null or zero/negative billed amounts.
      * Invalid lines are removed before adjudication proceeds.
      *
-     * BUG #3: This method uses a for-each loop and calls List.remove() inside the loop body.
-     * Modifying a collection while iterating over it with an enhanced for-each loop
-     * throws a ConcurrentModificationException at runtime. The correct approach is to
-     * use an Iterator with iterator.remove(), or collect lines to remove in a separate
-     * list and call removeAll() after the loop.
-     *
      * @param claimLines the list of claim lines to validate (modified in place)
      */
     private void validateClaimLines(List<ClaimLine> claimLines) {
         log.debug("Validating {} claim lines", claimLines.size());
 
-        // BUG #3: ConcurrentModificationException - removing from list during for-each iteration
-        for (ClaimLine line : claimLines) {
+        // Fixed Bug #3: Use removeIf instead of modifying during for-each iteration
+        claimLines.removeIf(line -> {
             if (line.getBilledAmount() == null || line.getBilledAmount().compareTo(BigDecimal.ZERO) <= 0) {
                 log.warn("Removing invalid claim line with procedure code {}: billed amount is null or zero",
                         line.getProcedureCode());
-                claimLines.remove(line); // BUG: ConcurrentModificationException thrown here
+                return true;
             }
-        }
+            return false;
+        });
 
         log.debug("Claim line validation complete. {} valid lines remaining", claimLines.size());
     }
