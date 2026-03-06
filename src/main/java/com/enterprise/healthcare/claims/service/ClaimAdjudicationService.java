@@ -80,14 +80,17 @@ public class ClaimAdjudicationService {
         }
 
         // Step 4: Check coverage type to determine adjudication rules
-        // BUG #1: claim.getPatient().getCoverage() can be null even after eligibility check
-        // passes in some edge cases. When coverage is null, getCoverageType() throws NPE.
-        // The eligibility service correctly gates on coverage != null, but if the service
-        // is called out of sequence or eligibility logic changes, this line will NPE.
-        String coverageType = claim.getPatient().getCoverage().getCoverageType().name();
+        // FIX FOR BUG #1: Add null check before accessing coverage
+        Coverage coverage = claim.getPatient().getCoverage();
+        if (coverage == null) {
+            log.warn("Claim {} denied: patient has no active coverage on file", claim.getClaimNumber());
+            return AdjudicationResult.denied(claim.getClaimNumber(),
+                    "DENIAL-003: No active coverage on file");
+        }
+        
+        String coverageType = coverage.getCoverageType().name();
         log.debug("Processing claim {} under {} coverage", claim.getClaimNumber(), coverageType);
 
-        Coverage coverage = claim.getPatient().getCoverage();
         BigDecimal deductibleAmount = coverage.getDeductibleAmount();
         BigDecimal outOfPocketMax = coverage.getOutOfPocketMax();
         BigDecimal copayAmount = coverage.getCopayAmount();
@@ -181,14 +184,15 @@ public class ClaimAdjudicationService {
     private void validateClaimLines(List<ClaimLine> claimLines) {
         log.debug("Validating {} claim lines", claimLines.size());
 
-        // BUG #3: ConcurrentModificationException - removing from list during for-each iteration
-        for (ClaimLine line : claimLines) {
+        // FIX FOR BUG #3: Use removeIf to safely remove elements during iteration
+        claimLines.removeIf(line -> {
             if (line.getBilledAmount() == null || line.getBilledAmount().compareTo(BigDecimal.ZERO) <= 0) {
                 log.warn("Removing invalid claim line with procedure code {}: billed amount is null or zero",
                         line.getProcedureCode());
-                claimLines.remove(line); // BUG: ConcurrentModificationException thrown here
+                return true; // Remove this element
             }
-        }
+            return false; // Keep this element
+        });
 
         log.debug("Claim line validation complete. {} valid lines remaining", claimLines.size());
     }
