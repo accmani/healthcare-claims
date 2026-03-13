@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -80,14 +81,17 @@ public class ClaimAdjudicationService {
         }
 
         // Step 4: Check coverage type to determine adjudication rules
-        // BUG #1: claim.getPatient().getCoverage() can be null even after eligibility check
-        // passes in some edge cases. When coverage is null, getCoverageType() throws NPE.
-        // The eligibility service correctly gates on coverage != null, but if the service
-        // is called out of sequence or eligibility logic changes, this line will NPE.
-        String coverageType = claim.getPatient().getCoverage().getCoverageType().name();
+        // BUG #1 FIX: Add null check before accessing coverage
+        Coverage coverage = claim.getPatient().getCoverage();
+        if (coverage == null) {
+            log.warn("Claim {} denied: patient has no coverage on file", claim.getClaimNumber());
+            return AdjudicationResult.denied(claim.getClaimNumber(),
+                    "DENIAL-003: No active coverage on file");
+        }
+        
+        String coverageType = coverage.getCoverageType().name();
         log.debug("Processing claim {} under {} coverage", claim.getClaimNumber(), coverageType);
 
-        Coverage coverage = claim.getPatient().getCoverage();
         BigDecimal deductibleAmount = coverage.getDeductibleAmount();
         BigDecimal outOfPocketMax = coverage.getOutOfPocketMax();
         BigDecimal copayAmount = coverage.getCopayAmount();
@@ -170,23 +174,22 @@ public class ClaimAdjudicationService {
      * Validates claim lines by removing any lines with null or zero/negative billed amounts.
      * Invalid lines are removed before adjudication proceeds.
      *
-     * BUG #3: This method uses a for-each loop and calls List.remove() inside the loop body.
-     * Modifying a collection while iterating over it with an enhanced for-each loop
-     * throws a ConcurrentModificationException at runtime. The correct approach is to
-     * use an Iterator with iterator.remove(), or collect lines to remove in a separate
-     * list and call removeAll() after the loop.
+     * BUG #3 FIX: Use Iterator to safely remove elements during iteration instead of
+     * for-each loop with List.remove() which causes ConcurrentModificationException.
      *
      * @param claimLines the list of claim lines to validate (modified in place)
      */
     private void validateClaimLines(List<ClaimLine> claimLines) {
         log.debug("Validating {} claim lines", claimLines.size());
 
-        // BUG #3: ConcurrentModificationException - removing from list during for-each iteration
-        for (ClaimLine line : claimLines) {
+        // BUG #3 FIX: Use Iterator for safe removal during iteration
+        Iterator<ClaimLine> iterator = claimLines.iterator();
+        while (iterator.hasNext()) {
+            ClaimLine line = iterator.next();
             if (line.getBilledAmount() == null || line.getBilledAmount().compareTo(BigDecimal.ZERO) <= 0) {
                 log.warn("Removing invalid claim line with procedure code {}: billed amount is null or zero",
                         line.getProcedureCode());
-                claimLines.remove(line); // BUG: ConcurrentModificationException thrown here
+                iterator.remove(); // Safe removal using iterator
             }
         }
 
