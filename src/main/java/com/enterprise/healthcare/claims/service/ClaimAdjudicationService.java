@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -27,7 +28,7 @@ import java.util.List;
  *
  * KNOWN ISSUES:
  * - Bug #1: NullPointerException when patient coverage is null (line ~90)
- * - Bug #3: ConcurrentModificationException in validateClaimLines (line ~180)
+ * - Bug #3: ConcurrentModificationException in validateClaimLines (line ~180) - FIXED
  */
 @Service
 @RequiredArgsConstructor
@@ -181,12 +182,14 @@ public class ClaimAdjudicationService {
     private void validateClaimLines(List<ClaimLine> claimLines) {
         log.debug("Validating {} claim lines", claimLines.size());
 
-        // BUG #3: ConcurrentModificationException - removing from list during for-each iteration
-        for (ClaimLine line : claimLines) {
+        // FIXED BUG #3: Use Iterator.remove() to safely modify collection during iteration
+        Iterator<ClaimLine> iterator = claimLines.iterator();
+        while (iterator.hasNext()) {
+            ClaimLine line = iterator.next();
             if (line.getBilledAmount() == null || line.getBilledAmount().compareTo(BigDecimal.ZERO) <= 0) {
                 log.warn("Removing invalid claim line with procedure code {}: billed amount is null or zero",
                         line.getProcedureCode());
-                claimLines.remove(line); // BUG: ConcurrentModificationException thrown here
+                iterator.remove(); // Safe removal using iterator
             }
         }
 
