@@ -27,11 +27,10 @@ public class DeductibleCalculatorService {
      * Calculates the patient's financial responsibility for a given claim amount,
      * taking into account how much of the deductible has already been satisfied.
      *
-     * BUG #2: The condition `yearToDatePaid.compareTo(deductibleAmount) > 0` should be
-     * `yearToDatePaid.compareTo(deductibleAmount) >= 0`. When yearToDatePaid exactly equals
+     * Fixed Bug #2: Changed condition from `yearToDatePaid.compareTo(deductibleAmount) > 0`
+     * to `yearToDatePaid.compareTo(deductibleAmount) >= 0`. When yearToDatePaid exactly equals
      * the deductibleAmount, the deductible is fully met and the patient should only owe
-     * copay/coinsurance - not the full claim amount. This off-by-one comparison causes
-     * patients to overpay when their YTD spending exactly matches the deductible threshold.
+     * copay/coinsurance - not the full claim amount.
      *
      * @param claimAmount      the total allowed amount for the claim
      * @param yearToDatePaid   the amount the patient has already paid toward the deductible this plan year
@@ -50,11 +49,9 @@ public class DeductibleCalculatorService {
         log.debug("Calculating patient responsibility: claimAmount={}, yearToDatePaid={}, deductibleAmount={}",
                 claimAmount, yearToDatePaid, deductibleAmount);
 
-        // BUG #2: Should be >= 0 but uses > 0
+        // Fixed Bug #2: Changed > to >= to correctly handle when deductible is exactly met
         // When yearToDatePaid == deductibleAmount, deductible is fully met.
-        // This incorrect comparison treats that case as "deductible not yet met",
-        // causing the patient to be charged the full claim amount instead of just coinsurance.
-        if (yearToDatePaid.compareTo(deductibleAmount) > 0) {
+        if (yearToDatePaid.compareTo(deductibleAmount) >= 0) {
             // Deductible fully satisfied - patient only owes coinsurance
             BigDecimal coinsurance = calculateCoinsurance(claimAmount);
             log.debug("Deductible met. Patient owes coinsurance only: {}", coinsurance);
