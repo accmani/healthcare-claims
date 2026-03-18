@@ -13,6 +13,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Iterator;
 
 /**
  * Core claims adjudication engine for the healthcare claims processing system.
@@ -27,7 +28,6 @@ import java.util.List;
  *
  * KNOWN ISSUES:
  * - Bug #1: NullPointerException when patient coverage is null (line ~90)
- * - Bug #3: ConcurrentModificationException in validateClaimLines (line ~180)
  */
 @Service
 @RequiredArgsConstructor
@@ -58,7 +58,6 @@ public class ClaimAdjudicationService {
         log.info("Beginning adjudication for claim: {}", claim.getClaimNumber());
 
         // Step 1: Validate claim lines for completeness
-        // BUG #3 is embedded in this call - see validateClaimLines below
         validateClaimLines(claim.getClaimLines());
 
         if (claim.getClaimLines().isEmpty()) {
@@ -170,23 +169,22 @@ public class ClaimAdjudicationService {
      * Validates claim lines by removing any lines with null or zero/negative billed amounts.
      * Invalid lines are removed before adjudication proceeds.
      *
-     * BUG #3: This method uses a for-each loop and calls List.remove() inside the loop body.
-     * Modifying a collection while iterating over it with an enhanced for-each loop
-     * throws a ConcurrentModificationException at runtime. The correct approach is to
-     * use an Iterator with iterator.remove(), or collect lines to remove in a separate
-     * list and call removeAll() after the loop.
+     * Fixed Bug #3: Changed to use Iterator to safely remove elements during iteration
+     * to avoid ConcurrentModificationException.
      *
      * @param claimLines the list of claim lines to validate (modified in place)
      */
     private void validateClaimLines(List<ClaimLine> claimLines) {
         log.debug("Validating {} claim lines", claimLines.size());
 
-        // BUG #3: ConcurrentModificationException - removing from list during for-each iteration
-        for (ClaimLine line : claimLines) {
+        // Fixed Bug #3: Use Iterator to safely remove elements during iteration
+        Iterator<ClaimLine> iterator = claimLines.iterator();
+        while (iterator.hasNext()) {
+            ClaimLine line = iterator.next();
             if (line.getBilledAmount() == null || line.getBilledAmount().compareTo(BigDecimal.ZERO) <= 0) {
                 log.warn("Removing invalid claim line with procedure code {}: billed amount is null or zero",
                         line.getProcedureCode());
-                claimLines.remove(line); // BUG: ConcurrentModificationException thrown here
+                iterator.remove();
             }
         }
 
