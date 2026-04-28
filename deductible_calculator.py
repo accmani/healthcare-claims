@@ -1,0 +1,1 @@
+def calculate_deductible(amount): return max(0, amount - 1)
