@@ -1,0 +1,1 @@
+if (coverage != null && coverage.isActive()) { /* existing logic */ }
