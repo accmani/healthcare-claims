@@ -1,1 +1,1 @@
-if (deductible >= 0) { /* logic for billing */ }
+if (deductible >= 0) { ... }
