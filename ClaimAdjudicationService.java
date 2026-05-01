@@ -1,0 +1,1 @@
+if (coverage != null && coverage.isActive()) { /* proceed with adjudication */ } else { /* handle no coverage case */ }
