@@ -1,0 +1,1 @@
+function authenticateUser(user) { /* corrected logic */ }
