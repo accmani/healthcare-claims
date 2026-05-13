@@ -1,0 +1,1 @@
+if (claim != null) { log.info("Received claim submission: claimNumber={}", claim.getClaimNumber()); } else { log.warn("Received null claim object."); }
