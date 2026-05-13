@@ -72,7 +72,7 @@ public class ClaimAdjudicationService {
 
         // Step 3: Verify patient eligibility
         boolean isEligible = eligibilityService.checkEligibility(claim.getPatient(), primaryServiceDate);
-        if (!isEligible) {
+        if (isEligible) {
             log.info("Claim {} denied: patient not eligible for service date {}",
                     claim.getClaimNumber(), primaryServiceDate);
             return AdjudicationResult.denied(claim.getClaimNumber(),
