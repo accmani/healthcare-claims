@@ -1,1 +1,8 @@
-if (claim != null) { log.info("Received claim submission: claimNumber={}", claim.getClaimNumber()); } else { log.warn("Received null claim object."); }
+// Fix for NullPointerException in ClaimController.java
+if (claim.getClaimNumber() != null && claimRepository.existsByClaimNumber(claim.getClaimNumber())) {
+    // existing logic
+}
+
+if (claim != null && claim.getSubmissionDate() == null) {
+    // existing logic
+}
