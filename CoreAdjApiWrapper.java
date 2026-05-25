@@ -1,6 +1,6 @@
-// Example fix for NullPointerException
-if (coverageObject != null) {
-    // Proceed with method calls on coverageObject
+// Check for active coverage before proceeding
+if (coverage != null && coverage.isActive()) {
+    // Proceed with processing
 } else {
-    // Handle the null case appropriately
+    throw new IllegalStateException("No active coverage available.");
 }
