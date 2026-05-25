@@ -1,6 +1,6 @@
-// Code changes to handle NullPointerException
-if (coverageData != null) {
-    // Proceed with processing
+// Example fix for NullPointerException
+if (coverageObject != null) {
+    // Proceed with method calls on coverageObject
 } else {
-    // Log error or handle null case
+    // Handle the null case appropriately
 }
